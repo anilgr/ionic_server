@@ -1,8 +1,10 @@
 var express = require("express");
-var firebase = require("firebase");
+firebase = require("firebase");
 var path = require("path");
 var url = require('url');
-
+var bodyParser = require('body-parser');
+var cors = require('cors');
+var auth = require('./src/auth');
 // Initialize Firebase
 var config = {
   apiKey: "AIzaSyDsId1IO77YJD3zpgik0pYpVx5RudtA6fY",
@@ -14,16 +16,14 @@ var config = {
 };
 firebase.initializeApp(config);
 var app = express();
-var bodyParser = require('body-parser');
-var urlencodedParser = bodyParser.urlencoded({ extended: false });
-// app.use(urlencodedParser)
-app.post("/signup", function(req, res){
- console.log("request:"+req.body);
- console.log(req)
- // console.log(res);
- res.header("Access-Control-Allow-Origin","*");
- res.end("WOO hooo signed you up!");
-});
-app.listen(8081, function(){
+// var urlencodedParser = bodyParser.urlencoded({ extended: false });
+// app.use(urlencodedParser);
+app.use(bodyParser.json());
+app.use(cors());
+
+
+app.post("/signup", auth.signUp);
+
+app.listen(8081, function() {
   console.log("listening on port 8081...");
 });
