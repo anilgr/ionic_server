@@ -24,6 +24,18 @@ app.use(cors());
 
 app.post("/signup", auth.signUp);
 
+app.get("/contacts", function(req, res){
+  firebase.database().ref("users").once("value").then(sendResponse);
+  function sendResponse(snapshot) {
+    res.write(JSON.stringify(snapshot.val()), function(err) {
+      if (err) {
+        console.log("error sending data");
+      }
+    });
+    res.end();
+  }
+})
+
 app.listen(8081, function() {
   console.log("listening on port 8081...");
 });

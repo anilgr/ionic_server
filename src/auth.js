@@ -9,6 +9,10 @@ var signUp = async function(req, res) {
           displayName: req.body.username,
           photoURL:"fksdjfsd.jpg"
         });
+        firebase.database().ref("/users/"+user.uid).set({
+          username:req.body.username,
+          email:user.email,
+        })
       }
     }).catch(function(error) {
         // Handle Errors here.
