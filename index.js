@@ -24,6 +24,8 @@ app.use(cors());
 
 app.post("/signup", auth.signUp);
 
+app.post("/login", auth.login);
+
 app.get("/contacts", function(req, res){
   firebase.database().ref("users").once("value").then(sendResponse);
   function sendResponse(snapshot) {
