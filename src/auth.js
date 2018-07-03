@@ -2,17 +2,16 @@ var auth = express.Router();
 
 var signUp = async function(req, res) {
   try {
-    await firebase.auth().createUserWithEmailAndPassword("agr@gmail.com", "123456")
+    await firebase.auth().createUserWithEmailAndPassword(req.body.email, "123456")
       .then(async (user) => {
-        // console.log(JSON.stringify(user));
         if (user) {
           user = await firebase.auth().currentUser;
           user.updateProfile({
+            uid:user.uid,
             displayName: req.body.username,
-            photoURL: "fksdjfsd.jpg"
           });
           firebase.database().ref("/users/" + user.uid).set({
-            username: "gv",
+            username: req.body.username,
             email: user.email,
           })
         }
@@ -36,7 +35,9 @@ var login = async function(req, res) {
 
   let uid;
   try {
-    await firebase.auth().signInWithEmailAndPassword("agr@gmail.com", "123456")
+    console.log("email:"+req.body.username);
+    console.log("password"+req.body.password);
+    await firebase.auth().signInWithEmailAndPassword(req.body.username, req.body.password)
       .then(async (user) => {
         if (user) {
           user = await firebase.auth().currentUser;
@@ -45,7 +46,8 @@ var login = async function(req, res) {
             displayName: "req.body.username",
             photoURL: "fksdjfsd.jpg"
           });
-          var token = await generateAccessToken();console.log("fhgdf");
+          console.log("user logged in with uid:"+uid);
+          var token = await generateAccessToken();
           saveAccessToken(token,uid);
           sendAccessToken(uid,res);
         }
@@ -101,11 +103,11 @@ async function sendAccessToken(uid, res) {
 
   await firebase.database().ref("/tokens").orderByChild("/user_id").equalTo(uid)
     .once('value', (snapshot) => {
-      console.log(JSON.stringify(snapshot.val()));
       snapshot.forEach((child) => {
         console.log("fecthed token using uid:" + child.key);
         res.end(JSON.stringify({
           access_token: child.val().access_token,
+          uid:uid
         }))
       })
     });
@@ -135,7 +137,6 @@ async function checkToken(res, next) {
     await firebase.database().ref("/tokens").orderByChild("/access_token").equalTo(auth.bearerToken)
     .once('value',(snapshot)=>{
     snapshot.forEach((child)=>{
-      console.log(child.access_token+"-----"+auth.bearerToken);
       if( child.val().access_token == auth.bearerToken)
       console.log("token valid");
       else {
@@ -145,12 +146,7 @@ async function checkToken(res, next) {
     })
     })
 }
-async function saveToken() {
-  await firebase.database().ref('/tokens/').push({
-    user_id: "dfgkdsjgflksjdfkljsdlfjlskdjf",
-    access_token: "jflskdjfksjdflkjseroieiu34urdjfdflskdf"
-  });
-}
+
 async function logout(req, res){
   await firebase.auth().signOut().then(function(){
     //logout successfull
@@ -164,7 +160,6 @@ module.exports = (app) => {
   auth.post("/signup", signUp);
   auth.post("/login", login);
   auth.post("/logout", logout);
-  auth.saveToken = saveToken;
   auth.authorise = authorise;
   return auth;
 }

@@ -1,9 +1,9 @@
 express = require("express");
 firebase = require("firebase");
- path = require("path");
- url = require('url');
- bodyParser = require('body-parser');
- cors = require('cors');
+path = require("path");
+url = require('url');
+bodyParser = require('body-parser');
+cors = require('cors');
 crypto = require('crypto')
 // Initialize Firebase
 var config = {
@@ -21,21 +21,13 @@ var messages = [];
 // app.use(urlencodedParser);
 app.use(bodyParser.json());
 app.use(cors());
-app.use(function(req,res,next){
+app.use(function(req, res, next) {
   // console.log(req.headers);
   next(undefined);
 })
-// const oAuth2Server = require('node-oauth2-server');
-// const oAuthModel = require('./src/accessTokenModel');
-// app.oauth = oAuth2Server({
-//     model: oAuthModel,
-//     grants: ['password'],
-//     debug: true
-// })
 var auth = require('./src/auth')(app);
 app.use('/auth', auth);
-// app.use(app.oauth.errorHandler());
-app.get("/users",auth.authorise,function(req, res) {
+app.get("/users", auth.authorise, function(req, res) {
   firebase.database().ref("users").once("value").then(sendResponse)
     .catch((err) => {
       log("error occured");
@@ -51,9 +43,13 @@ app.get("/users",auth.authorise,function(req, res) {
   }
 })
 
-app.post("/messages",function(req, res) {
+app.post("/messages", auth.authorise, async function(req, res) {
   messages.push(req.body)
+  await firebase.database().ref("messages").push(req.body);
+  console.log("message:");
+  console.log(req.body);
   res.end("message recieved!");
+
 })
 app.listen(8081, function() {
   console.log("listening on port 8081...");
