@@ -22,7 +22,7 @@ var messages = [];
 app.use(bodyParser.json());
 app.use(cors());
 app.use(function(req,res,next){
-  console.log(req.headers);
+  // console.log(req.headers);
   next(undefined);
 })
 // const oAuth2Server = require('node-oauth2-server');
@@ -35,7 +35,7 @@ app.use(function(req,res,next){
 var auth = require('./src/auth')(app);
 app.use('/auth', auth);
 // app.use(app.oauth.errorHandler());
-app.get("/users",function(req, res) {
+app.get("/users",auth.authorise,function(req, res) {
   firebase.database().ref("users").once("value").then(sendResponse)
     .catch((err) => {
       log("error occured");
@@ -52,7 +52,6 @@ app.get("/users",function(req, res) {
 })
 
 app.post("/messages",function(req, res) {
-  console.log(req.body);
   messages.push(req.body)
   res.end("message recieved!");
 })
