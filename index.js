@@ -26,6 +26,9 @@ app.use(function(req, res, next) {
   next(undefined);
 })
 var auth = require('./src/auth')(app);
+// auth.bearerToken = "dfjlsdjlsjdljslgjfdlgfdhgkjhdfkgjhfdg";
+// auth.checkToken("res","next");
+// auth.refreshTokens("ddf17e9bda7ce0fcfd0e5fcf2ad9dfe150500075");
 app.use('/auth', auth);
 app.get("/users", auth.authorise, function(req, res) {
   firebase.database().ref("users").once("value").then(sendResponse)
@@ -42,7 +45,28 @@ app.get("/users", auth.authorise, function(req, res) {
     res.end("");
   }
 })
+app.get("/refresh_token", function(req, res){
+  var refreshToken = req.get("refresh_token");
+  if (refreshToken) {
+    await firebase.database().ref("/tokens").orderByChild("/refresh_token").equalTo(refreshToken)
+    .once('value', (snapshot)=>{
+      snapshot.forEach(async (child) => {
+        var token = await auth.generateRandomToken();
+        child.getRef().child("access_token").set(token);
+        console.log("token refreshed");
+        res.end(JSON.stringify({
+          access_token: token,
+          refresh_token:refreshToken,
+        }))
 
+      })
+    })
+  }
+  else {
+    res.status(401).send("refresh token not found");
+    console.log("no refresh_token in the header.");
+  }
+})
 app.post("/messages", auth.authorise, async function(req, res) {
   messages.push(req.body)
   await firebase.database().ref("messages").push(req.body);
