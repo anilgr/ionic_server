@@ -45,24 +45,25 @@ app.get("/users", auth.authorise, function(req, res) {
     res.end("");
   }
 })
-app.get("/refresh_token", function(req, res){
+app.get("/refresh_token", async function(req, res) {
   var refreshToken = req.get("refresh_token");
-  if (refreshToken) {
+  if (true) {
     await firebase.database().ref("/tokens").orderByChild("/refresh_token").equalTo(refreshToken)
-    .once('value', (snapshot)=>{
-      snapshot.forEach(async (child) => {
-        var token = await auth.generateRandomToken();
-        child.getRef().child("access_token").set(token);
-        console.log("token refreshed");
-        res.end(JSON.stringify({
-          access_token: token,
-          refresh_token:refreshToken,
-        }))
+      .once('value', (snapshot) => {
+        snapshot.forEach(async (child) => {
+          var token = await auth.generateRandomToken();
+          child.getRef().child("access_token").set(token);
+          child.getRef().child("issued_at").set(new Date().toString());
+          console.log("token refreshed");
+          res.end(JSON.stringify({
+            access_token: token,
+            refresh_token: refreshToken,
+            issued_at: new Date().toString()
+          }))
 
+        })
       })
-    })
-  }
-  else {
+  } else {
     res.status(401).send("refresh token not found");
     console.log("no refresh_token in the header.");
   }
@@ -75,6 +76,40 @@ app.post("/messages", auth.authorise, async function(req, res) {
   res.end("message recieved!");
 
 })
+
+async function getMessages(req, res) {
+  console.log(req.query.person1);
+  var arya = req.params.user;
+  var snow = req.query.person2;
+  var messages = [];
+  await firebase.database().ref("/messages").orderByChild("/senderId").equalTo(arya)
+    .once('value', (snapshot) => {
+      snapshot.forEach((child) => {
+        if (child.val().recieverId == snow) {
+          messages.push(child.val());
+        }
+      })
+    })
+  await firebase.database().ref("/messages").orderByChild("/recieverId").equalTo(arya)
+    .once('value', (snapshot) => {
+      snapshot.forEach((child) => {
+        if (child.val().senderId == snow) {
+          messages.push(child.val());
+
+        }
+      })
+    })
+
+  messages.sort(function(a, b) {
+    return ((new Date(a.timestamp)) - (new Date(b.timestamp)));
+  })
+
+  console.log(messages);
+  res.end(JSON.stringify(messages));
+}
+
+app.get("/messages/:user", getMessages)
+
 app.listen(8081, function() {
   console.log("listening on port 8081...");
 });

@@ -35,8 +35,6 @@ var login = async function(req, res) {
 
   let uid;
   try {
-    console.log("email:"+req.body.username);
-    console.log("password:"+req.body.password);
     await firebase.auth().signInWithEmailAndPassword(req.body.username, req.body.password)
       .then(async (user) => {
         if (user) {
@@ -46,9 +44,8 @@ var login = async function(req, res) {
             displayName: "req.body.username",
 
           });
-          console.log("user logged in with uid:"+uid);
           var token = await generateRandomToken();
-          saveAccessToken(token, uid);
+          await saveAccessToken(token, uid);
           sendAccessToken(res, uid);
         }
 
@@ -101,14 +98,12 @@ async function saveAccessToken(token, user_id) {
     refresh_token: refreshToken,
     issued_at:new Date().toString(),
   });
-  console.log("saved token to database:" + token);
 }
 async function sendAccessToken(res, uid) {
 
   await firebase.database().ref("/tokens").orderByChild("/user_id").equalTo(uid)
     .once('value', (snapshot) => {
       snapshot.forEach((child) => {
-        console.log("fecthed token using uid:" + child.key);
         res.end(JSON.stringify({
           access_token: child.val().access_token,
           uid:uid,
@@ -135,7 +130,6 @@ function getBearerToken(req) {
 function authorise(req, res, next){
   getBearerToken(req, next);
   checkToken(res, next);
-  next();
 
 }
 async function checkToken(res, next) {
@@ -148,14 +142,13 @@ async function checkToken(res, next) {
         let tokenDate = new Date(child.val().issued_at);
         let diffMillis = now - tokenDate;
         var diffMins =  Math.floor((diffMillis/1000)/60);;
-        if(diffMins > 60)
+        if(diffMins > 2)
         {
-          console.log("token expired.");
           res.status(401).send("access token expired");
-          next('route');
+
         }
         else {
-          console.log("token valid:"+diffMins);
+          next()
         }
       }
       else {
