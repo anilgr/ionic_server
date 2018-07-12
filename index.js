@@ -77,7 +77,7 @@ app.post("/messages", auth.authorise, async function(req, res) {
 
 })
 
-async function getMessages(req, res) {
+async function getConversation(req, res) {
   console.log(req.query.person1);
   var arya = req.params.user;
   var snow = req.query.person2;
@@ -86,7 +86,9 @@ async function getMessages(req, res) {
     .once('value', (snapshot) => {
       snapshot.forEach((child) => {
         if (child.val().recieverId == snow) {
-          messages.push(child.val());
+          let val = child.val();
+          val.isLeft = false;
+          messages.push(val);
         }
       })
     })
@@ -94,7 +96,9 @@ async function getMessages(req, res) {
     .once('value', (snapshot) => {
       snapshot.forEach((child) => {
         if (child.val().senderId == snow) {
-          messages.push(child.val());
+          let val = child.val();
+          val.isLeft = true;
+          messages.push(val);
 
         }
       })
@@ -108,7 +112,7 @@ async function getMessages(req, res) {
   res.end(JSON.stringify(messages));
 }
 
-app.get("/messages/:user", getMessages)
+app.get("/messages/:user", getConversation)
 
 app.listen(8081, function() {
   console.log("listening on port 8081...");
