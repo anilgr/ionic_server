@@ -69,51 +69,308 @@ app.get("/refresh_token", async function(req, res) {
   }
 })
 app.post("/messages", auth.authorise, async function(req, res) {
-  messages.push(req.body)
-  await firebase.database().ref("messages").push(req.body);
-  console.log("message:");
-  console.log(req.body);
-  res.end("message recieved!");
+  let data = req.body.messageData;
+  let conversationId;
+  let senderId = req.body.messageData.senderId;
+  let recieverId = req.body.messageData.recieverId;
+  let member1, member2;
+  if (senderId > recieverId) {
+    member1 = recieverId;
+    member2 = senderId;
+  } else {
+    member2 = recieverId;
+    member1 = senderId;
+  }
+
+  if (req.body.isNewConversation) {
+    console.log("new conversation");
+    conversationId = await firebase.database().ref("/conversations").push({
+      member1: member1,
+      member2: member2
+    }).key;
+  } else {
+    conversationId = await getConversationId([senderId, recieverId])
+  }
+  data.conversation_id = conversationId;
+  await firebase.database().ref("/messages").push(data);
+  console.log("message:"+req.body.messageData.message);
+  res.end(JSON.stringify({
+    conversationId: conversationId,
+  }));
 
 })
 
+
+// async function getConversation(req, res) {
+//   var arya = req.params.user;
+//   var snow = req.query.person2;
+//   console.log(req.query.endKey);
+//   var messages = [];
+//   await firebase.database().ref("/messages").orderByChild("/senderId").equalTo(arya)
+//     .once('value', (snapshot) => {
+//       snapshot.forEach((child) => {
+//         if (child.val().recieverId == snow) {
+//           let val = child.val();
+//           val.isLeft = false;
+//           messages.push(val);
+//         }
+//       })
+//     })
+//   await firebase.database().ref("/messages").orderByChild("/recieverId").equalTo(arya)
+//     .once('value', (snapshot) => {
+//       snapshot.forEach((child) => {
+//         if (child.val().senderId == snow) {
+//           let val = child.val();
+//           val.isLeft = true;
+//           messages.push(val);
+//
+//         }
+//       })
+//     })
+//
+//   messages.sort(function(a, b) {
+//     return ((new Date(a.timestamp)) - (new Date(b.timestamp)));
+//   })
+//
+//
+//   res.end(JSON.stringify(messages));
+// }
+// app.get("/messages/:user",getConversation)
+// async function getConversation1(req, res) {
+//   console.log("entered 1");
+//   var arya = req.params.user;
+//   var snow = req.query.person2;
+//   // var arya = "AEBXoygDixZYnFtO6ExVHi4iR2I2";
+//   // var snow = "s0zrLqJsArcOw7jsXTO3GVvUkm63";
+//   var endKey = req.query.endKey;
+//   // console.log("end:"+req.query.endKey+" arya:"+arya+" snow"+snow);
+//   var msg1;
+//   var messages = [];
+//   var msg2;
+//   if (endKey == undefined)
+//     endkey = null;
+//   await firebase.database().ref("/messages").orderByChild("/senderId").equalTo(arya).limitToLast(6)
+//     .once('value', (snapshot) => {
+//       var isFirst = true;
+//       snapshot.forEach((child) => {
+//         if (child.val().recieverId == snow) {
+//           let val = child.val();
+//           val.isLeft = false;
+//           val.id = child.key;
+//           if (isFirst) {
+//             msg1 = val;
+//             isFirst = false;
+//           }
+//           console.log(val.message);
+//           messages.push(val);
+//         }
+//       })
+//       console.log("_______________");
+//
+//     })
+//
+//   await firebase.database().ref("/messages").orderByChild("/recieverId").equalTo(arya).limitToLast(6)
+//     .once('value', (snapshot) => {
+//       var isFirst = true;
+//       snapshot.forEach((child) => {
+//         if (child.val().senderId == snow) {
+//           let val = child.val();
+//           val.isLeft = true;
+//           val.id = child.key;
+//           if (isFirst) {
+//             msg2 = val;
+//             isFirst = false;
+//           }
+//           console.log(val.message);
+//
+//           messages.push(val);
+//
+//
+//         }
+//       })
+//     })
+//   var limit = ((new Date(msg1.timestamp)) - (new Date(msg2.timestamp))) > 0 ? msg1 : msg2;
+//
+//   // console.log(limit.message+":"+limit.id);
+//
+//
+//   messages.sort(function(a, b) {
+//     return ((new Date(a.timestamp)) - (new Date(b.timestamp)));
+//   })
+//   messages.forEach((msg) => {
+//     console.log(msg.id + ":" + msg.message);
+//   })
+//   while (messages[0].id != limit.id) {
+//     // console.log(messages[0].id +"   :    " +limit.id);
+//     var temp = messages.shift();
+//     // console.log("removing:"+temp.message +":"+ temp.id);
+//
+//   }
+//   console.log("\n");
+//   messages.forEach((msg) => {
+//     console.log(msg.message);
+//   })
+//   console.log("\n");
+//
+//
+//   res.end(JSON.stringify(messages));
+// }
+// async function getConversation(req, res) {
+//   var sender = req.params.user;
+//   var reciever = req.query.person2;
+//   var endKey = req.query.endKey;
+//   var msg1;
+//   var messages = [];
+//   var msg2;
+//   await firebase.database().ref("/messages").orderByChild("/senderId").endAt(sender, endKey).limitToLast(6)
+//     .once('value', (snapshot) => {
+//       var isFirst = true;
+//       snapshot.forEach((child) => {
+//         if (child.val().recieverId == reciever) {
+//           let val = child.val();
+//           val.id = child.key;
+//           val.isLeft = false;
+//
+//           if (isFirst) {
+//             msg1 = val;
+//             isFirst = false;
+//           }
+//           messages.push(val);
+//         }
+//       })
+//     })
+//   await firebase.database().ref("/messages").orderByChild("/recieverId").endAt(sender, endKey).limitToLast(6)
+//     .once('value', (snapshot) => {
+//       var isFirst = true;
+//       snapshot.forEach((child) => {
+//         if (child.val().senderId == reciever) {
+//           let val = child.val();
+//           val.id = child.key;
+//           val.isLeft = true;
+//
+//           if (isFirst) {
+//             msg2 = val;
+//             isFirst = false;
+//           }
+//
+//           messages.push(val);
+//
+//
+//         }
+//       })
+//     })
+//   var limit = ((new Date(msg1.timestamp)) - (new Date(msg2.timestamp))) > 0 ? msg1 : msg2;
+//   messages.sort(function(a, b) {
+//     return ((new Date(a.timestamp)) - (new Date(b.timestamp)));
+//   })
+//   while (messages[0].id != limit.id) {
+//     // console.log(messages[0].id +"   :   " +limit.id);
+//     var temp = messages.shift();
+//     // console.log("removing:"+temp.message +":"+ temp.id);
+//
+//   }
+//
+//
+//
+//   res.end(JSON.stringify(messages));
+// }
+
 async function getConversation(req, res) {
-  console.log(req.query.person1);
-  var arya = req.params.user;
-  var snow = req.query.person2;
+  var senderId = req.params.user;
+  var recieverId = req.query.person2;
+  // var sender = "AEBXoygDixZYnFtO6ExVHi4iR2I2";
+  // var reciever = "s0zrLqJsArcOw7jsXTO3GVvUkm63";
+  var endKey = req.query.endKey;
+  if(endKey == "undefined")endKey = undefined;
+
+  console.log("endKey:"+endKey);
   var messages = [];
-  await firebase.database().ref("/messages").orderByChild("/senderId").equalTo(arya)
-    .once('value', (snapshot) => {
-      snapshot.forEach((child) => {
-        if (child.val().recieverId == snow) {
-          let val = child.val();
-          val.isLeft = false;
-          messages.push(val);
-        }
+  var members = [senderId,recieverId];
+
+
+  let conversationId = await getConversationId(members) ;
+
+  if (conversationId == undefined) {
+    res.end(JSON.stringify(messages));
+    return;
+  }
+
+  try {
+    await firebase.database().ref("/messages").orderByChild("/conversation_id").endAt(conversationId,endKey).limitToLast(10)
+      .once('value', (snapshot) => {
+        snapshot.forEach((child) => {
+          if (child.val().conversation_id == conversationId)
+          {
+            msg = child.val();
+            msg.id = child.key;
+            messages.push(msg);
+          }
+
+        })
       })
-    })
-  await firebase.database().ref("/messages").orderByChild("/recieverId").equalTo(arya)
-    .once('value', (snapshot) => {
-      snapshot.forEach((child) => {
-        if (child.val().senderId == snow) {
-          let val = child.val();
-          val.isLeft = true;
-          messages.push(val);
+  } catch (e) {
+    console.log("error fetching messages");
+  }
 
-        }
-      })
-    })
-
-  messages.sort(function(a, b) {
-    return ((new Date(a.timestamp)) - (new Date(b.timestamp)));
-  })
-
-  console.log(messages);
   res.end(JSON.stringify(messages));
 }
+
 
 app.get("/messages/:user", getConversation)
 
 app.listen(8081, function() {
   console.log("listening on port 8081...");
 });
+async function getConversationId(members){
+  let member1, member2;
+  if (members[0] > members[1]) {
+    member1 = members[1];
+    member2 = members[0];
+  } else {
+    member2 = members[1];
+    member1 = members[0];
+  }
+  let conversationId;
+  try {
+    await firebase.database().ref("/conversations").orderByChild("/member1").equalTo(member1)
+      .once("value", (snapshot) => {
+        snapshot.forEach((child) => {
+          if (child.val().member2 == member2) {
+            conversationId = child.key;
+            console.log("conversation id:"+conversationId);
+          }
+
+        })
+      })
+  } catch (e) {
+    console.log("error fetching conversation id");
+
+  }
+  return conversationId;
+}
+
+
+
+
+
+/*
+conversation
+  -{conversation_id}
+    -members:[user_id1, user_id2....]
+    -
+
+
+
+
+
+messages
+  -{id}
+    -conversation_id
+    -message
+    -recieverId
+    -senderId
+    -timestamp
+
+
+
+*/
