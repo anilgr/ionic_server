@@ -85,11 +85,14 @@ app.post("/messages", auth.authorise, async function(req, res) {
   if (req.body.isNewConversation) {
     console.log("new conversation");
     conversationId = await firebase.database().ref("/conversations").push({
+      initiator:senderId,
       member1: member1,
-      member2: member2
+      member2: member2,
+      lastMessage:data,
     }).key;
   } else {
     conversationId = await getConversationId([senderId, recieverId])
+    await firebase.database().ref("/conversations").child(conversationId).child("lastMessage").set(data);
   }
   data.conversation_id = conversationId;
   await firebase.database().ref("/messages").push(data);
@@ -99,7 +102,7 @@ app.post("/messages", auth.authorise, async function(req, res) {
   }));
 
 })
-
+app.get("/conversations",getConversationsData)
 
 // async function getConversation(req, res) {
 //   var arya = req.params.user;
@@ -274,7 +277,16 @@ app.post("/messages", auth.authorise, async function(req, res) {
 //
 //   res.end(JSON.stringify(messages));
 // }
-
+async function getConversationsData(req, res){
+  await firebase.database().ref("/conversations").once('value', (snapshot)=>{
+    let chats = [];
+    snapshot.forEach((covtn)=>{
+      console.log(covtn.val());
+      chats.push(covtn.val());
+    })
+    res.end(JSON.stringify(chats));
+  })
+}
 async function getConversation(req, res) {
   var senderId = req.params.user;
   var recieverId = req.query.person2;
@@ -298,20 +310,29 @@ async function getConversation(req, res) {
   try {
     await firebase.database().ref("/messages").orderByChild("/conversation_id").endAt(conversationId,endKey).limitToLast(10)
       .once('value', (snapshot) => {
+        let valid = 0;
+        let invalid = 0;
         snapshot.forEach((child) => {
           if (child.val().conversation_id == conversationId)
           {
+            valid++;
             msg = child.val();
             msg.id = child.key;
             messages.push(msg);
           }
-
+          else{
+            invalid++;
+            console.log("invalid:"+child.val().message);
+          }
         })
+        console.log("total "+valid+" valids and "+invalid+" invalids recieved");
+
       })
   } catch (e) {
     console.log("error fetching messages");
   }
-
+  console.log("valild messages to be sent:");
+  console.log(messages);
   res.end(JSON.stringify(messages));
 }
 
