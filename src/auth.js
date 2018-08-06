@@ -83,7 +83,6 @@ function generateRandomToken() {
   })
 
 }
-
 async function saveAccessToken(token, user_id) {
   var refreshToken = await generateRandomToken();
   await firebase.database().ref("/tokens").orderByChild("/user_id").equalTo(user_id)
@@ -113,7 +112,6 @@ async function sendAccessToken(res, uid) {
     });
 
 }
-
 function getBearerToken(req) {
   var headerToken = req.get('Authorization');
   if (headerToken) {
@@ -162,11 +160,12 @@ async function refreshTokens(refreshToken){
 
 }
 async function logout(req, res){
+  console.log("reached endpoint");
   await firebase.auth().signOut().then(function(){
-    //logout successfull
+    console.log("success");
     res.end("logged out yaa!");
   }).catch(function(error){
-    //error occured.
+    console.log(error);
   })
 }
 module.exports = (app) => {
